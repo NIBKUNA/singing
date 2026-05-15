@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎤 같이 노래 부르기</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', 'Malgun Gothic', sans-serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: #eaeaea;
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+  }
+  .container {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  h1 {
+    text-align: center;
+    font-size: 28px;
+    margin-bottom: 8px;
+  }
+  .subtitle {
+    text-align: center;
+    color: #888;
+    margin-bottom: 24px;
+    font-size: 14px;
+  }
+  section {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  h2 {
+    margin: 0 0 16px 0;
+    font-size: 18px;
+    color: #ffcb6b;
+  }
+  button {
+    background: #4f8cff;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin: 4px;
+    transition: all 0.2s;
+  }
+  button:hover { background: #6ba0ff; }
+  button:disabled { background: #555; cursor: not-allowed; }
+  button.secondary { background: #2a3f5f; }
+  button.secondary:hover { background: #3a5278; }
+  button.danger { background: #d9534f; }
+  .slider-row {
+    display: flex;
+    align-items: center;
+    margin: 10px 0;
+    gap: 12px;
+  }
+  .slider-row label {
+    flex: 0 0 130px;
+    font-size: 14px;
+  }
+  .slider-row input[type="range"] {
+    flex: 1;
+    accent-color: #4f8cff;
+  }
+  .slider-row .value {
+    flex: 0 0 50px;
+    text-align: right;
+    color: #ffcb6b;
+    font-variant-numeric: tabular-nums;
+    font-size: 13px;
+  }
+  textarea {
+    width: 100%;
+    background: #0d1421;
+    color: #8ed3ff;
+    border: 1px solid #2a3f5f;
+    border-radius: 8px;
+    padding: 10px;
+    font-family: 'Consolas', monospace;
+    font-size: 11px;
+    resize: vertical;
+    min-height: 60px;
+    margin: 6px 0;
+  }
+  .status {
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: #0d1421;
+    text-align: center;
+    margin-top: 12px;
+    font-weight: 600;
+  }
+  .status.connected { background: #1b5e20; color: #c8e6c9; }
+  .status.failed { background: #5e1b1b; color: #ffcdd2; }
+  .status.connecting { background: #5e4a1b; color: #fff3c4; }
+  .preset-row { margin: 10px 0; }
+  .preset-row button { font-size: 13px; padding: 8px 14px; }
+  .hint {
+    font-size: 12px;
+    color: #999;
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+  .step-num {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    background: #ffcb6b;
+    color: #1a1a2e;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 24px;
+    font-weight: 700;
+    margin-right: 8px;
+    font-size: 14px;
+  }
+  .warn {
+    background: #5e4a1b;
+    color: #fff3c4;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin: 12px 0;
+  }
+  .meter {
+    height: 8px;
+    background: #0d1421;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+  .meter-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4caf50 0%, #ffcb6b 70%, #f44336 100%);
+    width: 0%;
+    transition: width 0.05s;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🎤 같이 노래 부르기</h1>
+  <p class="subtitle">친구랑 직접 연결 · 서버 없음 · 완전 무료</p>
+
+  <div class="warn">
+    ⚠️ <strong>꼭 헤드폰/이어폰</strong> 끼고 하세요. 스피커로 하면 하울링 나서 귀 아파요.
+  </div>
+
+  <section>
+    <h2><span class="step-num">1</span>마이크 켜기</h2>
+    <div style="margin-bottom:10px">
+      <label style="font-size:13px; color:#aaa;">마이크 선택:
+        <select id="micDevice" style="background:#0d1421; color:#eaeaea; border:1px solid #2a3f5f; border-radius:6px; padding:6px; margin-left:6px; min-width:200px;">
+          <option value="">(권한 허용 후 표시됨)</option>
+        </select>
+      </label>
+    </div>
+    <button id="startMic">🎙️ 마이크 시작</button>
+    <button id="testTone" class="secondary">🔔 테스트 소리 (스피커 확인)</button>
+    <div class="meter"><div class="meter-fill" id="meter"></div></div>
+    <div class="hint">처음 누르면 브라우저가 마이크 권한 물어봐요. 허용해주세요.<br>
+    미터가 안 움직이면 다른 마이크 선택해서 다시 켜보세요.</div>
+  </section>
+
+  <section>
+    <h2><span class="step-num">2</span>효과 조절</h2>
+    <div class="preset-row">
+      <button class="secondary" data-preset="dry">건조 (효과 없음)</button>
+      <button class="secondary" data-preset="room">방 (살짝 울림)</button>
+      <button class="secondary" data-preset="hall">강당 (큰 울림)</button>
+      <button class="secondary" data-preset="karaoke">노래방</button>
+    </div>
+    <div class="slider-row">
+      <label>마이크 증폭</label>
+      <input type="range" id="inputGain" min="0" max="6" step="0.1" value="2.0">
+      <span class="value" id="inputGainVal">2.00</span>
+    </div>
+    <div class="slider-row">
+      <label>내 목소리 듣기</label>
+      <input type="range" id="monitorVol" min="0" max="4" step="0.01" value="1.5">
+      <span class="value" id="monitorVolVal">1.50</span>
+    </div>
+    <div class="slider-row">
+      <label>에코 양</label>
+      <input type="range" id="wetAmount" min="0" max="1" step="0.01" value="0.35">
+      <span class="value" id="wetAmountVal">0.35</span>
+    </div>
+    <div class="slider-row">
+      <label>에코 길이 (초)</label>
+      <input type="range" id="echoDelay" min="0.02" max="0.8" step="0.01" value="0.18">
+      <span class="value" id="echoDelayVal">0.18</span>
+    </div>
+    <div class="slider-row">
+      <label>에코 반복 양</label>
+      <input type="range" id="echoFeedback" min="0" max="0.85" step="0.01" value="0.4">
+      <span class="value" id="echoFeedbackVal">0.40</span>
+    </div>
+    <div class="hint">건조 = 또렷한 목소리 · 반복 양 높이면 메아리처럼 계속 울려요</div>
+  </section>
+
+  <section>
+    <h2><span class="step-num">3</span>친구랑 연결</h2>
+    <p class="hint" style="margin-bottom:14px">
+      <strong>한 명만 "방 만들기"</strong>를 누르고 나온 코드를 친구한테 카톡/디스코드로 보내요.<br>
+      <strong>친구는 "방 들어가기"</strong>를 누른 다음 받은 코드를 붙여넣고, 답 코드를 다시 보내줘요.<br>
+      <strong>처음 사람은 받은 답 코드</strong>를 붙여넣고 "상대 코드 적용" 누르면 끝.
+    </p>
+    <button id="createOffer">📡 방 만들기 (호스트)</button>
+    <button id="createAnswer" class="secondary">🚪 방 들어가기 (게스트)</button>
+    <button id="setRemote" class="secondary">✅ 상대 코드 적용</button>
+
+    <div style="margin-top:14px">
+      <div style="font-size:13px; color:#ffcb6b; margin-bottom:4px;">📤 내 코드 (친구한테 보내기)</div>
+      <textarea id="localSDP" readonly placeholder="여기 내 코드 나옴 → 통째로 복사해서 친구한테 보내기"></textarea>
+      <button class="secondary" id="copyLocal">📋 복사</button>
+    </div>
+
+    <div style="margin-top:10px">
+      <div style="font-size:13px; color:#ffcb6b; margin-bottom:4px;">📥 친구 코드 (여기 붙여넣기)</div>
+      <textarea id="remoteSDP" placeholder="친구가 보내준 코드 여기에 붙여넣기"></textarea>
+    </div>
+
+    <div class="status" id="status">연결 안 됨</div>
+  </section>
+
+  <section>
+    <h2><span class="step-num">4</span>🎵 노래 / 반주 (옵션)</h2>
+    <p class="hint" style="margin-bottom:10px">
+      유튜브 영상 주소 또는 검색어로 반주 재생 + 가사 자동 표시.<br>
+      친구랑 연결되어 있으면 재생/정지가 자동 동기화돼요.
+    </p>
+    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px">
+      <input type="text" id="ytInput" placeholder="유튜브 URL 또는 영상 ID 붙여넣기"
+        style="flex:1; min-width:200px; background:#0d1421; color:#eaeaea; border:1px solid #2a3f5f; border-radius:6px; padding:8px;">
+      <button id="ytLoad">▶️ 불러오기</button>
+    </div>
+    <div id="ytPlayerWrap" style="display:none; margin-bottom:10px">
+      <div id="ytPlayer"></div>
+    </div>
+
+    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px">
+      <input type="text" id="lyricsArtist" placeholder="아티스트 (예: 아이유)"
+        style="flex:1; min-width:120px; background:#0d1421; color:#eaeaea; border:1px solid #2a3f5f; border-radius:6px; padding:8px;">
+      <input type="text" id="lyricsTitle" placeholder="곡 제목 (예: 좋은날)"
+        style="flex:1; min-width:120px; background:#0d1421; color:#eaeaea; border:1px solid #2a3f5f; border-radius:6px; padding:8px;">
+      <button id="lyricsFetch" class="secondary">📝 가사 가져오기</button>
+    </div>
+    <div id="lyricsBox" style="background:#0d1421; border-radius:8px; padding:14px; max-height:240px; overflow-y:auto; line-height:1.9; font-size:15px; color:#8a9bb8; text-align:center;">
+      가사가 여기 표시됩니다. 곡명/아티스트 입력 후 "가사 가져오기" 클릭.
+    </div>
+    <div class="hint" style="margin-top:8px">
+      가사 출처: <strong>LRCLIB</strong> (무료, 시간 동기화 가사). 영상 재생 시간에 맞춰 자동 스크롤됩니다.
+    </div>
+  </section>
+
+  <audio id="remoteAudio" autoplay></audio>
+</div>
+
+<script>
+let audioCtx, micStream, processedStream, pc;
+let nodes = {};
+
+const $ = id => document.getElementById(id);
+const setStatus = (text, cls) => {
+  const el = $('status');
+  el.textContent = text;
+  el.className = 'status' + (cls ? ' ' + cls : '');
+};
+
+// === 장치 목록 ===
+async function refreshDevices() {
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const mics = devices.filter(d => d.kind === 'audioinput');
+    const sel = $('micDevice');
+    const current = sel.value;
+    sel.innerHTML = '';
+    mics.forEach((m, i) => {
+      const opt = document.createElement('option');
+      opt.value = m.deviceId;
+      opt.textContent = m.label || `마이크 ${i + 1}`;
+      sel.appendChild(opt);
+    });
+    if (current) sel.value = current;
+  } catch (e) { console.warn(e); }
+}
+navigator.mediaDevices.addEventListener?.('devicechange', refreshDevices);
+refreshDevices();
+
+// === 테스트 소리 (스피커가 동작하는지 확인용) ===
+$('testTone').onclick = async () => {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  await ctx.resume();
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.frequency.value = 440;
+  g.gain.value = 0.1;
+  osc.connect(g); g.connect(ctx.destination);
+  osc.start();
+  setTimeout(() => { osc.stop(); ctx.close(); }, 500);
+};
+
+// === 마이크 + 오디오 효과 ===
+$('startMic').onclick = async () => {
+  // 이미 켜져있으면 정리
+  if (micStream) {
+    micStream.getTracks().forEach(t => t.stop());
+  }
+  if (audioCtx) {
+    try { await audioCtx.close(); } catch (e) {}
+  }
+
+  const deviceId = $('micDevice').value;
+  // 호환성 위해 sampleRate/channelCount는 ideal로 요청 (강제 X)
+  const constraints = {
+    audio: {
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
+      channelCount: { ideal: 2 },
+      sampleRate: { ideal: 48000 }
+    }
+  };
+  if (deviceId) constraints.audio.deviceId = { exact: deviceId };
+
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia(constraints);
+  } catch (e) {
+    alert('마이크 권한 거부됨 또는 장치 오류: ' + e.message);
+    return;
+  }
+
+  // 권한 받은 후 장치 라벨이 보이도록 목록 새로고침
+  await refreshDevices();
+
+  const track = micStream.getAudioTracks()[0];
+  console.log('🎤 사용 중인 마이크:', track.label, track.getSettings());
+
+  // AudioContext는 마이크 sampleRate에 맞춤 (강제하면 일부 환경에서 무음)
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  // ⭐ AudioContext는 처음에 suspended 상태일 수 있으므로 명시적으로 resume
+  await audioCtx.resume();
+  console.log('🎵 AudioContext 상태:', audioCtx.state, 'sampleRate:', audioCtx.sampleRate);
+
+  const source = audioCtx.createMediaStreamSource(micStream);
+
+  const inputGain = audioCtx.createGain();
+  const dryGain = audioCtx.createGain();
+  const wetGain = audioCtx.createGain();
+  const delay = audioCtx.createDelay(2.0);
+  const feedback = audioCtx.createGain();
+  const mixGain = audioCtx.createGain();
+  const monitorGain = audioCtx.createGain();
+  const analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 512;
+
+  inputGain.gain.value = parseFloat($('inputGain').value);
+  dryGain.gain.value = 1.0;
+  wetGain.gain.value = parseFloat($('wetAmount').value);
+  delay.delayTime.value = parseFloat($('echoDelay').value);
+  feedback.gain.value = parseFloat($('echoFeedback').value);
+  monitorGain.gain.value = parseFloat($('monitorVol').value);
+
+  source.connect(inputGain);
+  inputGain.connect(dryGain);
+  inputGain.connect(delay);
+  delay.connect(feedback);
+  feedback.connect(delay);
+  delay.connect(wetGain);
+  dryGain.connect(mixGain);
+  wetGain.connect(mixGain);
+
+  const dest = audioCtx.createMediaStreamDestination();
+  mixGain.connect(dest);
+  processedStream = dest.stream;
+
+  mixGain.connect(monitorGain);
+  monitorGain.connect(audioCtx.destination);
+  mixGain.connect(analyser);
+
+  nodes = { inputGain, dryGain, wetGain, delay, feedback, monitorGain };
+
+  $('startMic').textContent = '🔄 마이크 다시 시작';
+  $('startMic').disabled = false;
+
+  const data = new Uint8Array(analyser.frequencyBinCount);
+  const meter = $('meter');
+  const drawMeter = () => {
+    analyser.getByteTimeDomainData(data);
+    let max = 0;
+    for (let i = 0; i < data.length; i++) {
+      const v = Math.abs(data[i] - 128);
+      if (v > max) max = v;
+    }
+    meter.style.width = Math.min(100, (max / 128) * 200) + '%';
+    requestAnimationFrame(drawMeter);
+  };
+  drawMeter();
+};
+
+// === 슬라이더 바인딩 ===
+const bindSlider = (id, node, param) => {
+  const el = $(id);
+  const valEl = $(id + 'Val');
+  el.oninput = () => {
+    const v = parseFloat(el.value);
+    valEl.textContent = v.toFixed(2);
+    if (nodes[node]) nodes[node][param].value = v;
+  };
+};
+bindSlider('inputGain', 'inputGain', 'gain');
+bindSlider('monitorVol', 'monitorGain', 'gain');
+bindSlider('wetAmount', 'wetGain', 'gain');
+bindSlider('echoDelay', 'delay', 'delayTime');
+bindSlider('echoFeedback', 'feedback', 'gain');
+
+// === 프리셋 ===
+const presets = {
+  dry:      { wetAmount: 0.0,  echoDelay: 0.15, echoFeedback: 0.0  },
+  room:     { wetAmount: 0.25, echoDelay: 0.08, echoFeedback: 0.25 },
+  hall:     { wetAmount: 0.5,  echoDelay: 0.35, echoFeedback: 0.55 },
+  karaoke:  { wetAmount: 0.4,  echoDelay: 0.18, echoFeedback: 0.45 }
+};
+document.querySelectorAll('[data-preset]').forEach(btn => {
+  btn.onclick = () => {
+    const p = presets[btn.dataset.preset];
+    for (const k in p) {
+      $(k).value = p[k];
+      $(k).dispatchEvent(new Event('input'));
+    }
+  };
+});
+
+// === WebRTC ===
+const RTC_CONFIG = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' }
+  ]
+};
+
+function preferOpusStereo(sdp) {
+  // Opus 음악 모드: 스테레오 + 고비트레이트
+  const lines = sdp.split('\r\n');
+  let opusPT = null;
+  for (const line of lines) {
+    const m = line.match(/^a=rtpmap:(\d+)\s+opus\//i);
+    if (m) { opusPT = m[1]; break; }
+  }
+  if (!opusPT) return sdp;
+  const fmtpRegex = new RegExp(`^a=fmtp:${opusPT} (.+)$`);
+  let found = false;
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(fmtpRegex);
+    if (m) {
+      lines[i] = `a=fmtp:${opusPT} ${m[1]};stereo=1;sprop-stereo=1;maxaveragebitrate=256000;cbr=0;useinbandfec=1`;
+      found = true;
+      break;
+    }
+  }
+  if (!found) {
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].match(new RegExp(`^a=rtpmap:${opusPT} `))) {
+        lines.splice(i + 1, 0, `a=fmtp:${opusPT} stereo=1;sprop-stereo=1;maxaveragebitrate=256000;cbr=0;useinbandfec=1`);
+        break;
+      }
+    }
+  }
+  return lines.join('\r\n');
+}
+
+let dataChannel = null;
+
+function setupDataChannel(ch) {
+  dataChannel = ch;
+  ch.onmessage = (e) => {
+    try {
+      const msg = JSON.parse(e.data);
+      handleSyncMessage(msg);
+    } catch (err) { console.warn('잘못된 동기화 메시지', err); }
+  };
+  ch.onopen = () => console.log('🔗 데이터 채널 열림');
+  ch.onclose = () => console.log('🔗 데이터 채널 닫힘');
+}
+
+function sendSync(msg) {
+  if (dataChannel && dataChannel.readyState === 'open') {
+    dataChannel.send(JSON.stringify(msg));
+  }
+}
+
+function createPC(isOfferer) {
+  pc = new RTCPeerConnection(RTC_CONFIG);
+
+  pc.ontrack = (e) => {
+    $('remoteAudio').srcObject = e.streams[0];
+  };
+
+  pc.onconnectionstatechange = () => {
+    const s = pc.connectionState;
+    if (s === 'connected') setStatus('✅ 연결됨! 같이 불러요 🎶', 'connected');
+    else if (s === 'connecting') setStatus('연결 중...', 'connecting');
+    else if (s === 'failed' || s === 'disconnected') setStatus('❌ 연결 실패: ' + s, 'failed');
+    else setStatus('상태: ' + s);
+  };
+
+  // 호스트만 데이터 채널 생성; 게스트는 ondatachannel로 받음
+  if (isOfferer) {
+    setupDataChannel(pc.createDataChannel('sync'));
+  } else {
+    pc.ondatachannel = (e) => setupDataChannel(e.channel);
+  }
+
+  if (!processedStream) {
+    alert('먼저 마이크부터 켜주세요!');
+    return false;
+  }
+  processedStream.getTracks().forEach(t => pc.addTrack(t, processedStream));
+  return true;
+}
+
+function waitForIce() {
+  return new Promise(resolve => {
+    if (pc.iceGatheringState === 'complete') return resolve();
+    const check = () => {
+      if (pc.iceGatheringState === 'complete') {
+        pc.removeEventListener('icegatheringstatechange', check);
+        resolve();
+      }
+    };
+    pc.addEventListener('icegatheringstatechange', check);
+    // 안전장치: 5초 후 강제 종료
+    setTimeout(resolve, 5000);
+  });
+}
+
+function encodeSDP(desc) {
+  return btoa(unescape(encodeURIComponent(JSON.stringify(desc))));
+}
+function decodeSDP(str) {
+  return JSON.parse(decodeURIComponent(escape(atob(str.trim()))));
+}
+
+$('createOffer').onclick = async () => {
+  if (!createPC(true)) return;
+  setStatus('코드 생성 중...', 'connecting');
+  const offer = await pc.createOffer();
+  offer.sdp = preferOpusStereo(offer.sdp);
+  await pc.setLocalDescription(offer);
+  await waitForIce();
+  $('localSDP').value = encodeSDP(pc.localDescription);
+  setStatus('내 코드를 친구한테 보내세요', 'connecting');
+};
+
+$('createAnswer').onclick = async () => {
+  const offerStr = $('remoteSDP').value.trim();
+  if (!offerStr) { alert('먼저 친구가 보낸 코드를 붙여넣어주세요'); return; }
+  if (!createPC(false)) return;
+  setStatus('답장 생성 중...', 'connecting');
+  try {
+    const offer = decodeSDP(offerStr);
+    await pc.setRemoteDescription(offer);
+    let answer = await pc.createAnswer();
+    answer.sdp = preferOpusStereo(answer.sdp);
+    await pc.setLocalDescription(answer);
+    await waitForIce();
+    $('localSDP').value = encodeSDP(pc.localDescription);
+    setStatus('답 코드를 친구한테 다시 보내세요', 'connecting');
+  } catch (e) {
+    alert('코드가 잘못된 것 같아요: ' + e.message);
+    setStatus('❌ 코드 오류', 'failed');
+  }
+};
+
+$('setRemote').onclick = async () => {
+  const answerStr = $('remoteSDP').value.trim();
+  if (!answerStr) { alert('상대 코드를 붙여넣어주세요'); return; }
+  if (!pc) { alert('먼저 방을 만들거나 들어가야 해요'); return; }
+  try {
+    const answer = decodeSDP(answerStr);
+    await pc.setRemoteDescription(answer);
+    setStatus('연결 중...', 'connecting');
+  } catch (e) {
+    alert('코드가 잘못된 것 같아요: ' + e.message);
+  }
+};
+
+$('copyLocal').onclick = async () => {
+  const val = $('localSDP').value;
+  if (!val) { alert('아직 코드 없음'); return; }
+  try {
+    await navigator.clipboard.writeText(val);
+    $('copyLocal').textContent = '✅ 복사됨!';
+    setTimeout(() => $('copyLocal').textContent = '📋 복사', 1500);
+  } catch (e) {
+    $('localSDP').select();
+    document.execCommand('copy');
+  }
+};
+
+// ============================================================
+// 🎵 YouTube + LRCLIB (가사 동기화) — 무료
+// ============================================================
+let ytPlayer = null;
+let ytReady = false;
+let syncedLyrics = [];      // [{time: 12.34, text: '...'}]
+let lyricsLineEls = [];
+let currentLineIdx = -1;
+let suppressSync = false;   // 원격 메시지 처리 중일 때 다시 send 안 하게
+
+function extractVideoId(input) {
+  input = input.trim();
+  if (!input) return null;
+  if (/^[a-zA-Z0-9_-]{11}$/.test(input)) return input;
+  const m = input.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+// YouTube IFrame API 비동기 로드
+const ytScript = document.createElement('script');
+ytScript.src = 'https://www.youtube.com/iframe_api';
+document.head.appendChild(ytScript);
+
+window.onYouTubeIframeAPIReady = () => { ytReady = true; };
+
+function ensureYtPlayer(videoId) {
+  $('ytPlayerWrap').style.display = 'block';
+  if (!ytPlayer) {
+    ytPlayer = new YT.Player('ytPlayer', {
+      height: '220',
+      width: '100%',
+      videoId: videoId,
+      playerVars: { playsinline: 1, rel: 0 },
+      events: {
+        onStateChange: (e) => {
+          if (suppressSync) return;
+          const state = e.data;
+          const t = ytPlayer.getCurrentTime();
+          if (state === YT.PlayerState.PLAYING) sendSync({ type: 'play', t, vid: currentVideoId });
+          else if (state === YT.PlayerState.PAUSED) sendSync({ type: 'pause', t });
+        }
+      }
+    });
+  } else {
+    ytPlayer.loadVideoById(videoId);
+  }
+}
+
+let currentVideoId = null;
+
+$('ytLoad').onclick = () => {
+  const id = extractVideoId($('ytInput').value);
+  if (!id) { alert('유튜브 URL 또는 영상 ID(11자)를 입력하세요'); return; }
+  currentVideoId = id;
+  if (!ytReady) { alert('유튜브 플레이어 로딩 중... 잠시 후 다시 클릭'); return; }
+  ensureYtPlayer(id);
+  sendSync({ type: 'load', vid: id });
+};
+
+// === LRCLIB 가사 ===
+async function fetchLyrics(artist, title) {
+  // 먼저 정확 매칭, 실패하면 검색
+  try {
+    let res = await fetch(`https://lrclib.net/api/get?artist_name=${encodeURIComponent(artist)}&track_name=${encodeURIComponent(title)}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.syncedLyrics || data.plainLyrics) return data;
+    }
+  } catch (e) {}
+  // 검색 fallback
+  try {
+    const q = encodeURIComponent(`${artist} ${title}`.trim());
+    const res = await fetch(`https://lrclib.net/api/search?q=${q}`);
+    if (!res.ok) return null;
+    const list = await res.json();
+    if (!list.length) return null;
+    // syncedLyrics 있는 거 우선
+    return list.find(x => x.syncedLyrics) || list[0];
+  } catch (e) { return null; }
+}
+
+function parseLRC(lrc) {
+  if (!lrc) return [];
+  const lines = lrc.split('\n');
+  const out = [];
+  const re = /\[(\d+):(\d+(?:\.\d+)?)\](.*)/;
+  for (const line of lines) {
+    const m = line.match(re);
+    if (!m) continue;
+    const min = parseInt(m[1], 10);
+    const sec = parseFloat(m[2]);
+    const text = m[3].trim();
+    out.push({ time: min * 60 + sec, text });
+  }
+  return out.sort((a, b) => a.time - b.time);
+}
+
+function renderLyrics(lines, plainFallback) {
+  const box = $('lyricsBox');
+  box.innerHTML = '';
+  lyricsLineEls = [];
+  currentLineIdx = -1;
+  if (lines.length === 0) {
+    if (plainFallback) {
+      box.textContent = plainFallback;
+      box.style.textAlign = 'left';
+      box.style.whiteSpace = 'pre-wrap';
+    } else {
+      box.textContent = '가사를 찾을 수 없어요. 곡명/아티스트를 다르게 입력해보세요.';
+    }
+    return;
+  }
+  box.style.textAlign = 'center';
+  box.style.whiteSpace = 'normal';
+  lines.forEach((l, i) => {
+    const div = document.createElement('div');
+    div.textContent = l.text || '♪';
+    div.style.padding = '3px 0';
+    div.style.transition = 'all 0.2s';
+    div.dataset.idx = i;
+    box.appendChild(div);
+    lyricsLineEls.push(div);
+  });
+}
+
+function updateLyricsScroll(currentTime) {
+  if (syncedLyrics.length === 0) return;
+  let idx = -1;
+  for (let i = 0; i < syncedLyrics.length; i++) {
+    if (syncedLyrics[i].time <= currentTime) idx = i;
+    else break;
+  }
+  if (idx === currentLineIdx) return;
+  if (currentLineIdx >= 0 && lyricsLineEls[currentLineIdx]) {
+    lyricsLineEls[currentLineIdx].style.color = '#8a9bb8';
+    lyricsLineEls[currentLineIdx].style.fontWeight = 'normal';
+    lyricsLineEls[currentLineIdx].style.fontSize = '15px';
+  }
+  if (idx >= 0 && lyricsLineEls[idx]) {
+    const el = lyricsLineEls[idx];
+    el.style.color = '#ffcb6b';
+    el.style.fontWeight = '700';
+    el.style.fontSize = '18px';
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  currentLineIdx = idx;
+}
+
+// 매 200ms마다 현재 시간 체크해서 가사 갱신
+setInterval(() => {
+  if (ytPlayer && ytPlayer.getCurrentTime) {
+    try {
+      const t = ytPlayer.getCurrentTime();
+      updateLyricsScroll(t);
+    } catch (e) {}
+  }
+}, 200);
+
+$('lyricsFetch').onclick = async () => {
+  const artist = $('lyricsArtist').value.trim();
+  const title = $('lyricsTitle').value.trim();
+  if (!artist && !title) { alert('아티스트나 곡명을 입력하세요'); return; }
+  $('lyricsBox').textContent = '가사 검색 중...';
+  const data = await fetchLyrics(artist, title);
+  if (!data) {
+    $('lyricsBox').textContent = '가사를 찾을 수 없어요. 다른 검색어로 시도해보세요.';
+    syncedLyrics = [];
+    return;
+  }
+  syncedLyrics = parseLRC(data.syncedLyrics);
+  renderLyrics(syncedLyrics, data.plainLyrics);
+  console.log('🎵 가사 로드:', data.artistName, '-', data.trackName);
+  // 친구한테 동기 가사 전송
+  sendSync({ type: 'lyrics', artist, title });
+};
+
+// === 동기 메시지 처리 (친구로부터 받은 명령) ===
+async function handleSyncMessage(msg) {
+  suppressSync = true;
+  try {
+    if (msg.type === 'load' && msg.vid) {
+      currentVideoId = msg.vid;
+      $('ytInput').value = msg.vid;
+      if (ytReady) ensureYtPlayer(msg.vid);
+    } else if (msg.type === 'play' && ytPlayer && ytPlayer.playVideo) {
+      if (msg.vid && msg.vid !== currentVideoId) {
+        currentVideoId = msg.vid;
+        ensureYtPlayer(msg.vid);
+        setTimeout(() => { ytPlayer.seekTo(msg.t, true); ytPlayer.playVideo(); }, 800);
+      } else {
+        ytPlayer.seekTo(msg.t, true);
+        ytPlayer.playVideo();
+      }
+    } else if (msg.type === 'pause' && ytPlayer && ytPlayer.pauseVideo) {
+      ytPlayer.pauseVideo();
+      if (typeof msg.t === 'number') ytPlayer.seekTo(msg.t, true);
+    } else if (msg.type === 'lyrics') {
+      $('lyricsArtist').value = msg.artist || '';
+      $('lyricsTitle').value = msg.title || '';
+      const data = await fetchLyrics(msg.artist || '', msg.title || '');
+      if (data) {
+        syncedLyrics = parseLRC(data.syncedLyrics);
+        renderLyrics(syncedLyrics, data.plainLyrics);
+      }
+    }
+  } finally {
+    setTimeout(() => { suppressSync = false; }, 500);
+  }
+}
+</script>
+</body>
+</html>
